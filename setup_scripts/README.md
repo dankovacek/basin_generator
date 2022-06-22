@@ -33,19 +33,15 @@ Set up Computing Environment
 ----------------------------
 
 **Note, this code was tested on Ubuntu Linux.** These instructions are
-intended to minimize setup time and compute resources.
+intended to minimize setup time and compute resources:  
+&gt;`sudo apt update`  
+&gt;`sudo apt upgrade`
 
-<!-- >`sudo add-apt-repository ppa:ubuntugis/ubuntugis-unstable`   -->
-
-> `sudo apt update`  
-> `sudo apt upgrade`
-
-Install dependencies:
+Install dependencies:  
 &gt;`sudo apt-get install gdal-bin libgdal-dev libproj15 libproj-dev openmpi-bin libopenmpi-dev libboost-iostreams-dev parallel unzip dos2unix zip`
 
-**Clone the repository (from the root directory)**
-
-> `git clone https://github.com/dankovacek/basin_generator`
+Clone the repository (from the root directory):  
+&gt;`git clone https://github.com/dankovacek/basin_generator`
 
 Change directories to the `basin_generator` folder:  
 &gt;`cd basin_generator`
