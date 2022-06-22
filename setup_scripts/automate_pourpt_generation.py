@@ -214,47 +214,46 @@ def create_confluence_point_vector(region, stream, crs, confluences, n_sample, m
 
 
 
-method = 'RND'
-method = 'NBR'
-method = 'ACC'
+methods = ['RND', 'NBR', 'ACC']
 
 separate_output_files = True
 
-for region in ['07G']:#sorted(region_codes):
-    print(f'Processing {region} using {method} method.')
+for region in sorted(region_codes):
+    for method in methods:
+        print(f'Processing {region} using {method} method.')
 
-    region_area_km2 = get_region_area(region)
+        region_area_km2 = get_region_area(region)
 
-    ppt_sample_size = int(region_area_km2 / 10)
-    # ppt_sample_size = 10
+        ppt_sample_size = int(region_area_km2 / 10)
+        # ppt_sample_size = 10
 
-    print(f'Generating {ppt_sample_size} pour points for a region of {region_area_km2:.1f} km^2.')
-    
-    output_path = os.path.join(DATA_DIR, f'pour_points/')
+        print(f'Generating {ppt_sample_size} pour points for a region of {region_area_km2:.1f} km^2.')
+        
+        output_path = os.path.join(DATA_DIR, f'pour_points/')
 
-    existing_files = os.listdir(output_path)
+        existing_files = os.listdir(output_path)
 
-    if len(existing_files) == 5 * ppt_sample_size:
-        print(f'   ...{ppt_sample_size} samples already exist.  Skipping {region}.')
-    else:
-        stream, crs, affine = retrieve_raster(region, 'pruned_stream')
-
-        stream_px = np.where(stream)
-
-        t0 = time.time()
-
-        if method == 'RND':
-            ppts = random_stream_point_selection(stream, ppt_sample_size)
-        elif method == 'NBR':
-            ppts = find_stream_confluences_by_neighbors(stream, ppt_sample_size)
-        elif method == 'ACC':
-            ppts = find_stream_confluences_by_acc_gradient(region, stream, basin_threshold, ppt_sample_size)
+        if len(existing_files) == 5 * ppt_sample_size:
+            print(f'   ...{ppt_sample_size} samples already exist.  Skipping {region}.')
         else:
-            raise Exception(f'"{method}" method does not exist.  Variable "method" must be set to one of RND, NBR, or ACC.')
+            stream, crs, affine = retrieve_raster(region, 'pruned_stream')
 
-        t1 = time.time()
-        print(f'Time to find pour point sample: {t1-t0:.1f}s')
+            stream_px = np.where(stream)
 
-        pntr_path = create_confluence_point_vector(region, stream, crs, ppts, ppt_sample_size, method, separate_output_files)
+            t0 = time.time()
 
-        print(asfdsadf)
+            if method == 'RND':
+                ppts = random_stream_point_selection(stream, ppt_sample_size)
+            elif method == 'NBR':
+                ppts = find_stream_confluences_by_neighbors(stream, ppt_sample_size)
+            elif method == 'ACC':
+                ppts = find_stream_confluences_by_acc_gradient(region, stream, basin_threshold, ppt_sample_size)
+            else:
+                raise Exception(f'"{method}" method does not exist.  Variable "method" must be set to one of RND, NBR, or ACC.')
+
+            t1 = time.time()
+            print(f'Time to find pour point sample: {t1-t0:.1f}s')
+
+            pntr_path = create_confluence_point_vector(region, stream, crs, ppts, ppt_sample_size, method, separate_output_files)
+
+        # print(asfdsadf)

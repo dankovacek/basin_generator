@@ -34,6 +34,14 @@ processed_data_dir = os.path.join(DATA_DIR, 'processed_dem')
 region_files = os.listdir(os.path.join(processed_data_dir, 'EENV_DEM'))
 region_codes = sorted(list(set([e.split('_')[0] for e in region_files])))
 
+region_codes = [
+    #.07-.08 .26 .34-.35 .42-.44
+    '08P', '08O', '07G', '07U',
+    '07U', '08G', '08H', '08E', '08A',
+    '08D', '09A', '08F', '08B', '08C',
+    'ERockies', '08N', 'Peace', 
+    'Fraser', 'Liard'
+    ]
 
 def delineate_basin(data):
 
@@ -115,7 +123,7 @@ def convert_results_to_geojson(region, polygon_folder, method):
 
     gdf = gpd.GeoDataFrame(merged[['basin_id']], geometry=merged['geometry'].values, crs='EPSG:3005')
     n_basins = len(gdf)
-    fname = f'derived_basins/{region}/{region}_derived_basins_{method}_N{n_basins}.geojson'
+    fname = f'derived_basins/{region}/{region}_derived_basins_{method}.geojson'
     gdf.to_file(os.path.join(DATA_DIR, fname), driver='GeoJSON')
 
     print(f'   ...{len(gdf)} basins merged to geodataframe.')
@@ -182,61 +190,64 @@ def create_input_array(region, fdir_path, polygon_folder, basin_folder, ppt_fold
 
 def main():
 
-    method = 'RND'
-    method = 'NBR'
-    method = 'ACC'
+    methods = ['RND', 'NBR', 'ACC']
 
     use_unnest = False
     make_gdf = True
 
-    # ppt_sample_size = 1000
-    for region in ['07G']:#region_codes:
-        t_start = time.time()
-        print(f'Processing {region}.')
-        ppt_folder = os.path.join(DATA_DIR, f'pour_points/{region}/{method}')
+    # ppt_sample_size = 100
+    for region in region_codes:
+        for method in methods:
+            t_start = time.time()
+            print(f'Processing {region}.')
+            ppt_folder = os.path.join(DATA_DIR, f'pour_points/{region}/{method}')
 
-        # ppt_gdf = load_ppt_file(region, method, ppt_folder)
+            # ppt_gdf = load_ppt_file(region, method, ppt_folder)
 
-        fdir_file = f'EENV_DEM/{region}_EENV_DEM_3005_temp_fdir.tif'
-        fdir_path = os.path.join(processed_data_dir, fdir_file)
+            fdir_file = f'EENV_DEM/{region}_EENV_DEM_3005_temp_fdir.tif'
+            fdir_path = os.path.join(processed_data_dir, fdir_file)
 
-        temp_basin_raster_folder = os.path.join(DATA_DIR, f'derived_basins/{region}/basin_rasters/')
-        output_polygon_folder = os.path.join(DATA_DIR, f'derived_basins/{region}/basin_polygons/')
+            temp_basin_raster_folder = os.path.join(DATA_DIR, f'derived_basins/{region}/basin_rasters/')
+            output_polygon_folder = os.path.join(DATA_DIR, f'derived_basins/{region}/basin_polygons/')
 
-        for f in [temp_basin_raster_folder, output_polygon_folder]:
-            if not os.path.exists(f):
-                os.makedirs(f)
+            for f in [temp_basin_raster_folder, output_polygon_folder]:
+                if not os.path.exists(f):
+                    os.makedirs(f)
 
-        if use_unnest:
-            unnest_basins(region, fdir_path, temp_basin_raster_folder)
-        else:
-            # write the individual pour points to separate shp files in parallel
-            # first create a new folder to store the files if it doesn't exist
-            ppt_folder = os.path.join(DATA_DIR, f'pour_points/{region}/{method}/')
+            if use_unnest:
+                unnest_basins(region, fdir_path, temp_basin_raster_folder)
+            else:
+                # write the individual pour points to separate shp files in parallel
+                # first create a new folder to store the files if it doesn't exist
+                ppt_folder = os.path.join(DATA_DIR, f'pour_points/{region}/{method}/')
 
-            basin_input_array = create_input_array(region, fdir_path, output_polygon_folder, temp_basin_raster_folder, ppt_folder)
+                basin_input_array = create_input_array(region, fdir_path, output_polygon_folder, temp_basin_raster_folder, ppt_folder)
 
-            t1 = time.time()
+                t1 = time.time()
 
-            with mp.Pool() as p:
-                p.map(delineate_basin, basin_input_array)
+                with mp.Pool() as p:
+                    p.map(delineate_basin, basin_input_array)
 
-            n_basins_created = len(basin_input_array)
-            t2 = time.time()
-            print(f'{n_basins_created} pour point shapefiles written in {t2-t1:.1e}s')
+                n_basins_created = len(basin_input_array)
+                t2 = time.time()
+                print(f'{n_basins_created} pour point shapefiles written in {t2-t1:.1e}s')
 
-        for f in [temp_basin_raster_folder]:
-            os.rmdir(f)
+            for f in [temp_basin_raster_folder]:
+                os.rmdir(f)
 
-        convert_results_to_geojson(region, output_polygon_folder, method)
+            convert_results_to_geojson(region, output_polygon_folder, method)
 
-        clean_up_basin_polygons(output_polygon_folder)
+            clean_up_basin_polygons(output_polygon_folder)
 
-        t_end = time.time()
-        print(t_end - t_start)
-        unit_time = (t_end-t_start) / n_basins_created
-        print(f'   {t_end-t_start:.1f}s to delineate {n_basins_created} basins.  ({unit_time:.2f}s per basin.)')
-        print(asdfs)
+            t_end = time.time()
+            print(t_end - t_start)
+            unit_time = (t_end-t_start) / n_basins_created
+            print(f'   {t_end-t_start:.1f}s to delineate {n_basins_created} basins.  ({unit_time:.2f}s per basin.)')
+            print('')
+            print('')
+            print('')
+            print('#################')
+            print('')
 
 
 if __name__ == '__main__':

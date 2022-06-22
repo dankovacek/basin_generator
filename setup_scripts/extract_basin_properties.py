@@ -112,59 +112,66 @@ def calculate_slope_and_aspect(clipped_raster):
 
 
 def main():
-    ppt_sample_size = 100
+    methods = ['RND', 'NBR', 'ACC']
+
+    ppt_sample_size = 10
     take_sample = False
+
     for region in region_codes:
-        t_start = time.time()
-        print(f'Processing {region}.')
+        for method in methods:
+            t_start = time.time()
+            print(f'Processing {region}.')
 
-        basin_path = os.path.join(DATA_DIR, f'derived_basins/{region}_derived_basin_sample.geojson')
-        basin_df = gpd.read_file(basin_path)
+            basin_path = os.path.join(DATA_DIR, f'derived_basins/{region}/{region}_derived_basins_{method}.geojson')
+            basin_df = gpd.read_file(basin_path)
 
-        if take_sample:
-            sample_idx = random.choices(basin_df.index, k=ppt_sample_size)
-            basin_df = basin_df.loc[sample_idx, :].copy().sort_index()
-            print(f'   ...processing {len(basin_df)} basins.')
+            if take_sample:
+                sample_idx = random.choices(basin_df.index, k=ppt_sample_size)
+                basin_df = basin_df.loc[sample_idx, :].copy().sort_index()
+                print(f'   ...processing {len(basin_df)} basins.')
 
-        dem_path = os.path.join(DATA_DIR, f'processed_dem/EENV_DEM/{region}_EENV_DEM_3005.tif')
-        region_raster, _, _  = retrieve_raster(dem_path)
+            dem_path = os.path.join(DATA_DIR, f'processed_dem/EENV_DEM/{region}_EENV_DEM_3005.tif')
+            region_raster, _, _  = retrieve_raster(dem_path)
 
-        output_data_folder = os.path.join(DATA_DIR, 'basin_properties')
-        if not os.path.exists(output_data_folder):
-            os.mkdir(output_data_folder)
-        
-        output_fpath = os.path.join(output_data_folder, f'{region}_basin_sample_properties.csv')
-        
-        for i, row in basin_df.iterrows():
+            output_data_folder = os.path.join(DATA_DIR, f'basin_properties/{region}/')
+            if not os.path.exists(output_data_folder):
+                os.makedirs(output_data_folder)
             
-            basin_polygon = basin_df[basin_df.index == i]
-
-            clipped_raster, raster_loaded = clip_raster_to_basin(basin_polygon, region_raster)
+            output_fpath = os.path.join(output_data_folder, f'{region}_basin_properties_{method}.csv')
             
-            mean_el, median_el, min_el, max_el = process_basin_elevation(clipped_raster)
-            basin_df.loc[i, 'Drainage_Area_km2'] = row['geometry'].area / 1E6
-            basin_df.loc[i, 'mean_el'] = mean_el
-            basin_df.loc[i, 'median_el'] = median_el
-            # basin_df.loc[i, 'min_el'] = min_el
-            # basin_df.loc[i, 'max_el'] = max_el
-            
-            gravelius, perimeter = calculate_gravelius_and_perimeter(basin_polygon)
-            
-            basin_df.loc[i, 'gravelius'] = gravelius
-            basin_df.loc[i, 'perimeter'] = perimeter
+            for i, row in basin_df.iterrows():
+                
+                basin_polygon = basin_df[basin_df.index == i]
 
-            slope, aspect = calculate_slope_and_aspect(clipped_raster)
-            basin_df.loc[i, 'slope'] = slope
-            basin_df.loc[i, 'aspect'] = aspect
+                clipped_raster, raster_loaded = clip_raster_to_basin(basin_polygon, region_raster)
+                
+                mean_el, median_el, min_el, max_el = process_basin_elevation(clipped_raster)
+                basin_df.loc[i, 'Drainage_Area_km2'] = row['geometry'].area / 1E6
+                basin_df.loc[i, 'mean_el'] = mean_el
+                # median elevation, but label it the same as hysets column (Elevation_m)
+                basin_df.loc[i, 'Elevation_m'] = median_el
+                # basin_df.loc[i, 'min_el'] = min_el
+                # basin_df.loc[i, 'max_el'] = max_el
+                
+                gravelius, perimeter = calculate_gravelius_and_perimeter(basin_polygon)
+                
+                basin_df.loc[i, 'Gravelius'] = gravelius
+                basin_df.loc[i, 'Perimeter'] = perimeter
 
-        # drop the geometry column to save disk and write time
-        basin_df = basin_df[[c for c in basin_df.columns if c != 'geometry']]
-        basin_df.to_csv(output_fpath)
+                slope, aspect = calculate_slope_and_aspect(clipped_raster)
+                basin_df.loc[i, 'Slope_deg'] = slope
+                basin_df.loc[i, 'Aspect_deg'] = aspect
 
-        t_end = time.time()
-        unit_time = (t_end-t_start) / len(basin_df)
-        print(f'   {t_end-t_start:.1f}s to delineate {len(basin_df)} basins.  ({unit_time:.2f}s per basin.)')
-        print('')
+            # drop the geometry column to save disk and write time
+            basin_df = basin_df[[c for c in basin_df.columns if c != 'geometry']]
+            basin_df.to_csv(output_fpath)
+
+            t_end = time.time()
+            unit_time = (t_end-t_start) / len(basin_df)
+            print(f'   {t_end-t_start:.1f}s to delineate {len(basin_df)} basins.  ({unit_time:.2f}s per basin.)')
+            print('')
+
+        print(sdafdasd)
 
 
 if __name__ == '__main__':
