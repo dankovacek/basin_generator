@@ -49,13 +49,11 @@ Change directories to the `basin_generator` folder:
 ### Install Python package manager (pip)
 
 If not automatically installed, install Python and virtualenv (assuming
-Python3 is installed by default on a linux distribution):
+Python3 is installed by default on a linux distribution):  
+&gt;`sudo apt install python3.8-venv pip`
 
-> `sudo apt install python3.8-venv pip`
-
-Create Python 3.8+ virtual environment at the root level directory:
-
-> `python3 -m venv env/`
+Create Python 3.8+ virtual environment at the root level directory:  
+&gt;`python3 -m venv env/`
 
 Activate the virual environment:  
 &gt;`source env/bin/activate`
@@ -96,10 +94,9 @@ step of delineating a large set of basins.
 <!-- Note: the breach [depression function](https://jblindsay.github.io/ghrg/Whitebox/Help/BreachDepressions.html) run on the DEM is a bottleneck step.   -->
 
 Create the individual region DEM files using the provided region
-polygons and the DEM tile mosaic created in the previous step:
-
-> `cd setup_scripts/`  
-> `python create_complete_region_DEMS.py`
+polygons and the DEM tile mosaic created in the previous step:  
+&gt;`cd setup_scripts/`  
+&gt;`python create_complete_region_DEMS.py`
 
 Process the region DEMs to create rasters representing flow direction,
 flow accumulation, and stream network:  
