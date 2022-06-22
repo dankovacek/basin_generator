@@ -76,11 +76,20 @@ script in `setup_scripts`:
 Links to invidivual DEM tiles look like the following:  
 &gt;`http://mirrors.iplantcollaborative.org/earthenv_dem_data/EarthEnv-DEM90/EarthEnv-DEM90_N55W125.tar.gz`
 
-The resulting .vrt mosaic should look like below (red outline added to
-emphasize land mass bounds.):
+The .vrt mosaic created looks like the image at left, and at right after
+clipping rasters using the provided sub-region polygons:
 
 ![DEM Mosaic of BC and administrative boundary
-regions](../img/wsc-ssda-processed.png)
+regions](../img/DEM_tiled_trimmed.png)
+
+The study region is split into sub-regions that describe “complete
+basins”, in other words the region bounds have no inflows, only
+outflows. This is an important property when delineating basins at
+arbitrary points in space. The sub-regions are derived from Water Survey
+of Canada sub-sub-catchment (SSC) polygons from the National
+Hydrographic Network (NHN) and from the USGS for southeast Alaska.
+
+![Merging process for complete sub-regions.](../img/merging_regions.png)
 
 DEM Preparation
 ---------------
