@@ -334,7 +334,7 @@ def main():
                     # (can't, they aren't ordered)
 
                 t_end = time.time()
-                if n_sim % 2 == 0:
+                if n_sim % 10 == 0:
                     print(f'   ...simulation {n_sim} processed in {t_end-t_start:.1f}s.')
             
 
