@@ -296,9 +296,9 @@ separate_output_files = False
 cell_tracking_info = {}
 
 for region in sorted(region_codes):
-    region = '07G'
+    # region = '07G'
     # region = 'Liard'
-    print('')
+    # print('')
 
     stream, crs, affine = retrieve_raster(region, 'pruned_stream')
 
