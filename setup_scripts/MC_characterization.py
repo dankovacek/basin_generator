@@ -49,14 +49,13 @@ if os.path.exists(basin_tracker_fpath):
 
 region_codes = [
     #.07-.08 .26 .34-.35 .42-.44
-    # '08P', '08O',# '07G', '07U',
+    '08P', '08O', '07G', '07U', '07O',
     #                      1.33
-    #'08G', '08H', '08E', '08A',
-    # '08A',
-    # '08D', '09A', '08F', '08B', '08C',
-    # 'ERockies', '08N', 'Peace', 
-    # 'Fraser', 'Liard'
-    'Liard'
+    '08G', '08H', '08E', '08A',
+    '08D', '09A', '08F', '08B', '08C',
+    'ERockies', '08N', 'Peace', 
+    'Fraser', 'Liard'
+    # 'Liard'
     ]
 
 def retrieve_raster(region, raster_type):
