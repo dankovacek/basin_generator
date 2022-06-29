@@ -26,10 +26,9 @@ DEM_resolution = 90 # EarthEnv DEM is 90m resolution
 basin_threshold = int(1E6 / (90 * 90)) # min number of cells comprising a basin
 
 processed_data_dir = os.path.join(DATA_DIR, 'processed_dem')
+derived_basins_dir = os.path.join(DATA_DIR, 'derived_basins')
 
-region_files = os.listdir(os.path.join(processed_data_dir, 'EENV_DEM'))
-region_codes = sorted(list(set([e.split('_')[0] for e in region_files])))
-
+processed_regions = [e for e in os.listdir(derived_basins_dir) if not e.endswith('.geojson')]
 
 
 def retrieve_polygon(fname):
@@ -117,7 +116,7 @@ def main():
     ppt_sample_size = 10
     take_sample = False
 
-    for region in region_codes:
+    for region in processed_regions:
         for method in methods:
             t_start = time.time()
             print(f'Processing {region}.')
@@ -171,7 +170,7 @@ def main():
             print(f'   {t_end-t_start:.1f}s to delineate {len(basin_df)} basins.  ({unit_time:.2f}s per basin.)')
             print('')
 
-        print(sdafdasd)
+        # print(sdafdasd)
 
 
 if __name__ == '__main__':

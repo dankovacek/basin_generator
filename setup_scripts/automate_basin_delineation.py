@@ -36,8 +36,10 @@ region_codes = sorted(list(set([e.split('_')[0] for e in region_files])))
 
 region_codes = [
     #.07-.08 .26 .34-.35 .42-.44
-    '08P', '08O', '07G', '07U',
-    '07U', '08G', '08H', '08E', '08A',
+    # '08P', '08O', '07G', '07U',
+    #                      1.33
+    #'08G', '08H', '08E', '08A',
+    # '08A',
     '08D', '09A', '08F', '08B', '08C',
     'ERockies', '08N', 'Peace', 
     'Fraser', 'Liard'
@@ -104,6 +106,7 @@ def clean_up_basin_polygons(output_polygon_folder):
         os.remove(os.path.join(output_polygon_folder, f))
 
     os.rmdir(output_polygon_folder)
+    
 
 def convert_results_to_geojson(region, polygon_folder, method):
     
@@ -190,7 +193,7 @@ def create_input_array(region, fdir_path, polygon_folder, basin_folder, ppt_fold
 
 def main():
 
-    methods = ['RND', 'NBR', 'ACC']
+    methods = ['RAND', 'CONF', 'GRAD']
 
     use_unnest = False
     make_gdf = True
@@ -225,7 +228,7 @@ def main():
 
                 t1 = time.time()
 
-                with mp.Pool() as p:
+                with mp.Pool(5) as p:
                     p.map(delineate_basin, basin_input_array)
 
                 n_basins_created = len(basin_input_array)
@@ -248,6 +251,7 @@ def main():
             print('')
             print('#################')
             print('')
+        print(asdf)
 
 
 if __name__ == '__main__':

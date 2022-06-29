@@ -12,6 +12,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 import numpy as np
+import pandas as pd
 import geopandas as gpd
 import rioxarray as rxr
 
@@ -38,8 +39,8 @@ region_files = os.listdir(os.path.join(processed_data_dir, 'EENV_DEM'))
 region_codes = sorted(list(set([e.split('_')[0] for e in region_files])))
 
 
-def retrieve_raster(region, type):
-    filename = f'{region}_EENV_DEM_3005_{type}.tif'
+def retrieve_raster(region, raster_type):
+    filename = f'{region}_EENV_DEM_3005_{raster_type}.tif'
     raster_path = os.path.join(processed_data_dir, f'EENV_DEM/{filename}')
     raster = rxr.open_rasterio(raster_path, mask_and_scale=True)
     crs = raster.rio.crs
@@ -59,16 +60,29 @@ def get_region_area(region):
     return gdf['geometry'].area.values[0] / 1E6
 
 
-def random_stream_point_selection(stream, ppt_sample_size):
+def random_stream_point_selection(S, ppt_sample_size):
     """
     Randomly select stream pixels.
     """
-    D = stream.data[0].copy()
-    stream_px = np.argwhere( D == 1 )
-    return random.choices(stream_px, k=ppt_sample_size)
-    
+    acc, crs, affine = retrieve_raster(region, 'accum')
+    A = acc.data[0]
+    stream_px = np.argwhere( S == 1 )
+    stream_sample = random.choices(stream_px, k=ppt_sample_size)
+    ppts = []
+    c = 0
+    for i, j in stream_sample:
+        cell_acc = A[i, j]
+        ppts.append((i, j, cell_acc, c))
+        c += 1
 
-def find_stream_confluences_by_neighbors(stream, ppt_sample_size):
+    pct_tracked = len(ppts) / len(stream_px) * 100
+    print(f'Tracked {c} randomly selected points.')
+    print(f'{len(ppts):.1e}/{len(stream_px):.1e} stream pixels are points of interest ({pct_tracked:.0f}%).')
+        
+    return ppts, pct_tracked
+
+
+def find_stream_confluences_by_fdir(S, ppt_sample_size):
     """Assume confluences are stream pixels connected adjacent or diagonally with more than two other stream pixels.
 
     Args:
@@ -77,43 +91,70 @@ def find_stream_confluences_by_neighbors(stream, ppt_sample_size):
     Returns:
         _type_: list of pixel indices corresponding to confluences
     """
-    D = stream.data[0].copy()
+    # retrieve the flow direction raster
+    fdir, crs, affine = retrieve_raster(region, 'temp_fdir')
+    acc, crs, affine = retrieve_raster(region, 'accum')
+
+    A = acc.data[0]
+
+    F = fdir.data[0]
+
     # the matrix is very sparse, retrieve just the indices
     # corresponding to (all) stream pixels
-    stream_px = np.argwhere( D == 1 )
-    # print(non_nan_px[0])
+    stream_px = np.argwhere( S == 1 )
+
     confluences = []
     c = 0
     for (i, j) in stream_px:
         
-        W = D[i-1:i+2, j-1:j+2].round(2)
-        # get the number of stream cells.
-        # The stream_px array is the indices of all stream pixels.
-        # The number of neighboring cells is one less than the 
-        # total numeric cells.
-        # 0 neighboring cells: pit, not a stream (don't track)
-        # 1: headwater / outlet (track)
-        # 2: mid-stream (don't track)
-        # 3+: confluence
-        num_stream_cells = np.count_nonzero(~np.isnan(W))
+        # create a boolean matrix for stream cells
+        S_W = np.where((S[i-1:i+2, j-1:j+2] == 1), 1, 0)
+        # retrieve D8 pointer from a 3x3 window 
+        # around the target pixel
+        F_W = F[i-1:i+2, j-1:j+2].round(2) 
+        # mask the flow direction by element-wise multiplication
+        # using the boolean stream matrix
+        W = np.multiply(F_W, S_W)
 
-        num_neighbors = num_stream_cells - 1
+        # get the accumulation window to find the drainage area
+        # of each inflow cell (as well as the target cell)
+        A_W = np.multiply(A[i-1:i+2, j-1:j+2], S_W)        
+
+        inflow_directions = np.array([
+            [4, 8, 16],
+            [2, np.nan, 32],
+            [1, 128, 64]
+        ])
+
+        # find flow direction cells
+        # flowing towards the center cell.
+        inflow_cells = np.argwhere(W == inflow_directions)
+        num_matches = np.sum(W == inflow_directions)
     
-        if (num_neighbors > 2):
+        if num_matches > 1:
+            # add the target cell
+            cell_acc = A_W[1, 1]
+            confluences.append((i, j, cell_acc, c))
+            # add the inflow cell indices
+            inflow_cells = np.argwhere((W == inflow_directions))
+            for ci, cj in inflow_cells:
+                ix = ci + i - 1
+                jx = cj + j - 1
+                cell_acc = A_W[ci, cj]  
+                confluences.append((ix, jx, cell_acc, c))
             c += 1
-            confluences.append((i, j))
 
-    if len(confluences) > ppt_sample_size:
-        return random.choices(confluences, k=ppt_sample_size)
+    # if len(confluences) > ppt_sample_size:
+    #     return random.choices(confluences, k=ppt_sample_size)
+
+    pct_found = len(confluences) / len(stream_px) * 100
+    print(f'{c} confluences found.')
+    print(f'{len(confluences):.1e}/{len(stream_px):.1e} stream pixels are points of interest ({pct_found:.0f}%).')
+
+    return confluences, pct_found
 
 
-
-    print(f'{len(confluences):.1e}/{len(stream_px):.1e} stream pixels are points of interest.')
-
-    return confluences
-
-
-def find_stream_confluences_by_acc_gradient(region, stream, threshold, ppt_sample_size):
+def find_stream_confluences_by_acc_gradient(region, S, threshold, ppt_sample_size):
     """_summary_
 
     Args:
@@ -126,55 +167,90 @@ def find_stream_confluences_by_acc_gradient(region, stream, threshold, ppt_sampl
     """
     acc, crs, affine = retrieve_raster(region, 'accum')
 
-    A = acc.data[0].copy()
-
-    # A = np.where(A > threshold, A, np.nan)
-
-    D = stream.data[0].copy()
-    stream_px = np.argwhere( D == 1 )
+    stream_px = np.argwhere( S == 1 )
 
     px_of_interest = []
-    
+    c = 0
     for i, j in stream_px:
         # get the accumulation value of the target cell
-        cell_acc = A[i, j]
-        # get the accumulation values of a window 
-        # of cells surrounding the target cell
-        W = A[i-1:i+2, j-1:j+2].round(2)
+        cell_acc = acc.data[0][i, j]
+
+        # create a boolean matrix for stream cells
+        S_W = np.where((S[i-1:i+2, j-1:j+2] == 1), True, np.nan)
+        
+        # retrieve flow accumulation from a 3x3 window 
+        # around the target pixel
+        A_W = acc.data[0][i-1:i+2, j-1:j+2].round(2) 
+
+        # mask the flow direction by element-wise multiplication
+        # using the boolean stream matrix
+        A = np.multiply(A_W, S_W)
+        # print(f'threshold: {threshold}')
+        # print(A)
+        # print(asdfs)
 
         # num_stream_cells = np.count_nonzero(~np.isnan(W))
 
         # calculate the acc gradient w.r.t. the target cell
-        acc_grad = cell_acc - W
+        acc_grad = cell_acc - A
         jump_px = np.argwhere( acc_grad > threshold )
 
         num_jumps = len(jump_px)
 
         if (num_jumps > 0):
-            px_of_interest.append((i, j))
+            px_of_interest.append((i, j, cell_acc, c))
+            c += 1
 
-    if len(px_of_interest) > ppt_sample_size:
-        return random.choices(px_of_interest, k=ppt_sample_size)
+    # if len(px_of_interest) > ppt_sample_size:
+    #     return random.choices(px_of_interest, k=ppt_sample_size)
 
-    return px_of_interest
+    pct_found = len(px_of_interest) / len(stream_px) * 100
+    print(f'{len(px_of_interest):.1e}/{len(stream_px):.1e} stream pixels are points of interest ({pct_found:.0f}%).')
+
+    return px_of_interest, pct_found
 
 
-def generate_pour_points(stream, confluences, n_chunks=2):
+def create_pour_point_gdf(stream, confluences, crs, n_chunks=2):
+    """Break apart the list of stream pixels to avoid memory 
+    allocation issue when indexing large rasters.
+
+    Args:
+        stream (_type_): _description_
+        confluences (_type_): _description_
+        n_chunks (int, optional): _description_. Defaults to 2.
+
+    Returns:
+        _type_: _description_
+    """
     
     n_chunks = int(10 * np.log(len(confluences)))
 
     conf_chunks = np.array_split(np.asarray(confluences), indices_or_sections=n_chunks)
 
     point_array = []
+    acc_array, id_array = [], []
+    idx_array = []
     for chunk in conf_chunks:
-        xis = [c[0] for c in chunk]
-        yis = [c[1] for c in chunk]
+
+        xis = [int(c[0]) for c in chunk]
+        yis = [int(c[1]) for c in chunk]
+        acc_array += [int(c[2]) for c in chunk]
+        id_array += [int(c[3]) for c in chunk]
+        idx_array += [str(f'{c[0]},{c[1]}') for c in chunk]
 
         ppts = stream[0, xis, yis]
         coords = tuple(map(tuple, zip(ppts.coords['x'].values, ppts.coords['y'].values)))
         point_array += [Point(p) for p in coords]
-    
-    return point_array
+
+    df = pd.DataFrame()
+    df['num_acc_cells'] = acc_array
+    df['pt_id'] = id_array
+    df['raster_idx'] = idx_array
+
+    gdf = gpd.GeoDataFrame(df, geometry=point_array, crs=crs)
+    print(f'{len(gdf)} pour points created.')   
+
+    return gdf
 
 
 def save_gdf(data):
@@ -184,14 +260,9 @@ def save_gdf(data):
 
 def create_confluence_point_vector(region, stream, crs, confluences, n_sample, method, separate_output_files=False):
 
-    ppts = generate_pour_points(stream, confluences)
+    ppt_gdf = create_pour_point_gdf(stream, confluences, crs, method)
 
-    ppts = random.choices(ppts, k=n_sample)
-
-    gdf = gpd.GeoDataFrame(geometry=ppts, crs=crs)
-    print(f'{len(gdf)} pour points created.')
-
-    output_folder = os.path.join(DATA_DIR, f'pour_points/{region}/{method}')
+    output_folder = os.path.join(DATA_DIR, f'pour_points/{region}/')
 
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
@@ -199,27 +270,46 @@ def create_confluence_point_vector(region, stream, crs, confluences, n_sample, m
     if separate_output_files:
         # if you want to create individual pour point files (shp)
         gdfs = []
-        for i, _ in gdf.iterrows():
-            ppt = gdf[gdf.index == i].copy()
-            gdf_path = os.path.join(output_folder, f'{region}_ppt_{method}_{i}.shp')
+        for i, _ in ppt_gdf.iterrows():
+            ppt = ppt_gdf[ppt_gdf.index == i].copy()
+            acc_val = ppt['num_acc_cells'].values[0]
+            pt_id = ppt['pt_id'].values[0]
+            gdf_path = os.path.join(output_folder, f'{region}_ppt_{method}_{i}_acc{acc_val}_id{pt_id}.shp')
             gdfs.append((ppt, gdf_path))
 
         with Pool() as p:
             p.map(save_gdf, gdfs)
     
     output_folder =  os.path.join(DATA_DIR, f'pour_points/{region}')
-    output_path = os.path.join(output_folder, f'{region}_pour_pts_{method}_N{n_sample}_RA.geojson')
+    output_path = os.path.join(output_folder, f'{region}_pour_pts_{method}.geojson')
     # output to a single gdf geojson
-    gdf.to_file(output_path, driver='GeoJSON')
+    ppt_gdf.to_file(output_path, driver='GeoJSON')
 
 
 
-methods = ['RND', 'NBR', 'ACC']
+methods = ['CONF', 'GRAD']
+# methods = ['CONF', 'GRAD']
+# methods = ['RAND']
 
-separate_output_files = True
+separate_output_files = False
+
+cell_tracking_info = {}
 
 for region in sorted(region_codes):
+    region = '07G'
+    # region = 'Liard'
+    print('')
+
+    stream, crs, affine = retrieve_raster(region, 'pruned_stream')
+
+    S = stream.data[0]
+
+    cell_tracking_info= {}
+
+    tracking_df = pd.DataFrame()
+    tracked_pcts = []
     for method in methods:
+        print('')
         print(f'Processing {region} using {method} method.')
 
         region_area_km2 = get_region_area(region)
@@ -236,18 +326,16 @@ for region in sorted(region_codes):
         if len(existing_files) == 5 * ppt_sample_size:
             print(f'   ...{ppt_sample_size} samples already exist.  Skipping {region}.')
         else:
-            stream, crs, affine = retrieve_raster(region, 'pruned_stream')
-
-            stream_px = np.where(stream)
+            stream_px = np.where(S)
 
             t0 = time.time()
 
-            if method == 'RND':
-                ppts = random_stream_point_selection(stream, ppt_sample_size)
-            elif method == 'NBR':
-                ppts = find_stream_confluences_by_neighbors(stream, ppt_sample_size)
-            elif method == 'ACC':
-                ppts = find_stream_confluences_by_acc_gradient(region, stream, basin_threshold, ppt_sample_size)
+            if method == 'RAND':
+                ppts, pct_cells_tracked = random_stream_point_selection(S, ppt_sample_size)
+            elif method == 'CONF':
+                ppts, pct_cells_tracked = find_stream_confluences_by_fdir(S, ppt_sample_size)
+            elif method == 'GRAD':
+                ppts, pct_cells_tracked = find_stream_confluences_by_acc_gradient(region, S, basin_threshold, ppt_sample_size)
             else:
                 raise Exception(f'"{method}" method does not exist.  Variable "method" must be set to one of RND, NBR, or ACC.')
 
@@ -255,5 +343,15 @@ for region in sorted(region_codes):
             print(f'Time to find pour point sample: {t1-t0:.1f}s')
 
             pntr_path = create_confluence_point_vector(region, stream, crs, ppts, ppt_sample_size, method, separate_output_files)
+    
+            tracking_df[method] = [len(ppts), pct_cells_tracked]
 
-        # print(asfdsadf)
+    tracking_df.index = ['num_cells_tracked', 'pct_cells_tracked']
+    if not os.path.exists(os.path.join(output_path, f'ppt_stats/')):
+        os.makedirs(os.path.join(output_path, f'ppt_stats/'))
+    tracking_df.to_csv(os.path.join(output_path, f'ppt_stats/{region}_ppt_stats.csv'))
+
+    print(asdfsad)
+
+    
+    
