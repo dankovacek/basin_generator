@@ -31,7 +31,6 @@ DATA_DIR = os.path.join(BASE_DIR, 'processed_data/')
 EXT_MEDIA = '/media/danbot/Samsung_T5/geospatial_data/basin_generator/'
 
 EXT_MEDIA = DATA_DIR
-print(DATA_DIR)
 
 DEM_resolution = 90 # EarthEnv DEM is 90m resolution
 basin_threshold = int(1E6 / (90 * 90)) # min number of cells comprising a basin
@@ -50,14 +49,12 @@ if os.path.exists(basin_tracker_fpath):
         # print(basin_tracker)
 
 region_codes = [
-    #.07-.08 .26 .34-.35 .42-.44
     '08P', 
     '08O', '07G', '07U', '07O',
     '08G', '08H', '08E', '08A',
     '08D', '09A', '08F', '08B', '08C',
     'ERockies', '08N', 'Peace', 
     'Fraser', 'Liard'
-    # 'Liard'
     ]
 
 def retrieve_raster(region, raster_type):
@@ -200,10 +197,8 @@ def create_temp_file_and_update_tracker(region, ppt_gdf, basin_tracker, temp_fil
     n_batches = int(filesize * sample_size / batch_limit) + 1
     # print(f' Running {n_batches} batch(es) on {filesize:.1f}MB raster.')
     batch_paths = []
-    # n_batches = 2
-    # sample_size = 1E12
+
     temp_gdf['FID'] = temp_gdf['pt_id'].copy()
-    # print(asfsd)
     if sample_size * filesize < batch_limit:
         temp_fpath = temp_filepath.split('.')[0] + f'_0.shp'
         temp_gdf.to_file(temp_fpath)
@@ -275,9 +270,7 @@ def reformat_basin_polygons_and_cleanup(region, method, temp_raster_path, temp_p
 
     if not os.path.exists(output_polygon_folder):
         os.makedirs(output_polygon_folder)
-    print(output_polygon_folder)
     gdf_fpath = os.path.join(output_polygon_folder, f'{region}_basins_{method}_{n_sim}.geojson')
-    print(gdf_fpath)
     all_gdfs.to_file(gdf_fpath, driver='GeoJSON')
     
 
