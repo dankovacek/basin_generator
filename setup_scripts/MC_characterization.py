@@ -274,6 +274,7 @@ def reformat_basin_polygons_and_cleanup(region, method, temp_raster_path, temp_p
         os.makedirs(output_polygon_path)
 
     gdf_fpath = os.path.join(output_polygon_path, f'{region}_basins_{method}_{n_sim}.geojson')
+    print(gdf_fpath)
     all_gdfs.to_file(gdf_fpath, driver='GeoJSON')
     
 
