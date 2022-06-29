@@ -29,7 +29,7 @@ wbt.verbose = False
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(BASE_DIR, 'processed_data/')
 EXT_MEDIA = '/media/danbot/Samsung_T5/geospatial_data/basin_generator/'
-EXT_MEDIA = DATA_DIR
+# EXT_MEDIA = DATA_DIR
 
 DEM_resolution = 90 # EarthEnv DEM is 90m resolution
 basin_threshold = int(1E6 / (90 * 90)) # min number of cells comprising a basin
@@ -49,7 +49,7 @@ if os.path.exists(basin_tracker_fpath):
 
 region_codes = [
     #.07-.08 .26 .34-.35 .42-.44
-    # '08P', 
+    '08P', 
     '08O', '07G', '07U', '07O',
     '08G', '08H', '08E', '08A',
     '08D', '09A', '08F', '08B', '08C',
@@ -126,8 +126,7 @@ def create_pour_point_gdf(stream, acc, pts, crs, n_chunks=2):
     df['pt_id'] = list(range(len(df)))
 
     gdf = gpd.GeoDataFrame(df, geometry=point_array, crs=crs)
-    # print(f'{len(gdf)} pour points created.')   
-
+    # print(f'{len(gdf)} pour points created.')
     return gdf
 
 
@@ -262,18 +261,18 @@ def reformat_basin_polygons_and_cleanup(region, method, temp_raster_path, temp_p
     temp_polygon_files = os.listdir(temp_polygon_path) 
 
     for f in temp_polygon_files:
-        # print(f'removing {f}')
-        if not f.endswith('.geojson'):
-            os.remove(os.path.join(temp_polygon_path, f))
+        os.remove(os.path.join(temp_polygon_path, f))
 
     all_gdfs = gpd.GeoDataFrame(pd.concat(gdfs), crs=crs)
     all_gdfs.reset_index(inplace=True)
+
     if 'media' in EXT_MEDIA:
         output_polygon_path = os.path.join(EXT_MEDIA, f'RB/derived_basins/{region}')
     else:
         output_polygon_path = os.path.join(EXT_MEDIA, f'/derived_basins/{region}')
     if not os.path.exists(output_polygon_path):
         os.makedirs(output_polygon_path)
+
     gdf_fpath = os.path.join(output_polygon_path, f'{region}_basins_{method}_{n_sim}.geojson')
     all_gdfs.to_file(gdf_fpath, driver='GeoJSON')
     
@@ -298,7 +297,7 @@ def main():
         filesize = (os.path.getsize(fdir_path) >> 20 )
 
         temp_basin_raster_folder = os.path.join(DATA_DIR, f'derived_basins/{region}/basin_rasters/')
-        temp_polygon_folder = os.path.join(DATA_DIR, f'derived_basins/{region}/basin_polygons/')
+        temp_polygon_folder = os.path.join(DATA_DIR, f'derived_basins/temp/')
         
         ppt_folder = os.path.join(DATA_DIR, f'pour_points/{region}/')
         temp_ppt_filepath = os.path.join(ppt_folder, 'temp_ppt_sample.shp')
