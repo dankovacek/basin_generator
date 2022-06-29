@@ -32,6 +32,8 @@ EXT_MEDIA = '/media/danbot/Samsung_T5/geospatial_data/basin_generator/'
 
 EXT_MEDIA = DATA_DIR
 print(DATA_DIR)
+print(EXT_MEDIA)
+print(asfsd)
 DEM_resolution = 90 # EarthEnv DEM is 90m resolution
 basin_threshold = int(1E6 / (90 * 90)) # min number of cells comprising a basin
 
@@ -271,6 +273,7 @@ def reformat_basin_polygons_and_cleanup(region, method, temp_raster_path, temp_p
         output_polygon_path = os.path.join(EXT_MEDIA, f'RB/derived_basins/{region}')
     else:
         output_polygon_path = os.path.join(EXT_MEDIA, f'/derived_basins/{region}')
+
     if not os.path.exists(output_polygon_path):
         os.makedirs(output_polygon_path)
 
