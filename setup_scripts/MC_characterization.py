@@ -49,8 +49,8 @@ if os.path.exists(basin_tracker_fpath):
 
 region_codes = [
     #.07-.08 .26 .34-.35 .42-.44
-    '08P', '08O', '07G', '07U', '07O',
-    #                      1.33
+    # '08P', 
+    '08O', '07G', '07U', '07O',
     '08G', '08H', '08E', '08A',
     '08D', '09A', '08F', '08B', '08C',
     'ERockies', '08N', 'Peace', 
@@ -283,7 +283,6 @@ def main():
     methods = ['RAND', 'CONF', 'GRAD']
 
     n_simulations = 100
-    t_start = time.time()
 
     # ppt_sample_size = 100
     for region in region_codes:
@@ -310,10 +309,11 @@ def main():
 
         for method in methods:
             # method = 'CONF'
+            t_start = time.time()
 
             print(f'Processing {region}: {n_simulations} simulations of {sample_size} basin samples using {method} method.')
 
-            for n_sim in range(n_simulations):
+            for n_sim in range(1, n_simulations+1):
 
                 ppt_gdf = create_ppt_sample(region, method, sample_size)
 
@@ -334,10 +334,8 @@ def main():
                 
                 if n_sim % 10 == 0:
                     t_end = time.time()
-                    if n_sim == 0:
-                        n_sim = 1
                     unit_time = (t_end - t_start) / n_sim
-                    print(f'   ...simulation {n_sim} processed in {t_end-t_start:.1f}s ({unit_time:.2f})s/sim..')
+                    print(f'   ...simulation {n_sim} processed in {t_end-t_start:.1f}s ({unit_time:.1f})s/sim..')
             
 
 if __name__ == '__main__':
