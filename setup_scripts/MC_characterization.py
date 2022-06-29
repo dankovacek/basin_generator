@@ -335,7 +335,7 @@ def main():
                 if n_sim % 10 == 0:
                     t_end = time.time()
                     unit_time = (t_end - t_start) / n_sim
-                    print(f'   ...simulation {n_sim} processed in {t_end-t_start:.1f}s ({})s/sim..')
+                    print(f'   ...simulation {n_sim} processed in {t_end-t_start:.1f}s ({unit_time:.2f})s/sim..')
             
 
 if __name__ == '__main__':
