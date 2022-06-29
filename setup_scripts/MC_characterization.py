@@ -283,6 +283,7 @@ def main():
     methods = ['RAND', 'CONF', 'GRAD']
 
     n_simulations = 100
+    t_start = time.time()
 
     # ppt_sample_size = 100
     for region in region_codes:
@@ -313,8 +314,6 @@ def main():
             print(f'Processing {region}: {n_simulations} simulations of {sample_size} basin samples using {method} method.')
 
             for n_sim in range(n_simulations):
-                
-                t_start = time.time()
 
                 ppt_gdf = create_ppt_sample(region, method, sample_size)
 
@@ -332,10 +331,11 @@ def main():
                     # store the dropped indexes and add 
                     # their associated properties 
                     # (can't, they aren't ordered)
-
-                t_end = time.time()
+                
                 if n_sim % 10 == 0:
-                    print(f'   ...simulation {n_sim} processed in {t_end-t_start:.1f}s.')
+                    t_end = time.time()
+                    unit_time = (t_end - t_start) / n_sim
+                    print(f'   ...simulation {n_sim} processed in {t_end-t_start:.1f}s ({})s/sim..')
             
 
 if __name__ == '__main__':
