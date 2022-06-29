@@ -208,7 +208,7 @@ def create_temp_file_and_update_tracker(region, ppt_gdf, basin_tracker, temp_fil
         n = 0
         for batch in batches:
             batch_gdf = temp_gdf[temp_gdf.index.isin(batch)].copy()            
-            temp_fpath = temp_filepath.split('.')[0] + f'_{n:3d}.shp'
+            temp_fpath = temp_filepath.split('.')[0] + f'_{n:03d}.shp'
             batch_gdf.to_file(temp_fpath)
             n += 1
             batch_paths.append(temp_fpath)    
