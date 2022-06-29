@@ -270,14 +270,14 @@ def reformat_basin_polygons_and_cleanup(region, method, temp_raster_path, temp_p
     all_gdfs.reset_index(inplace=True)
 
     if 'media' in EXT_MEDIA:
-        output_polygon_path = os.path.join(EXT_MEDIA, f'RB/derived_basins/{region}')
+        output_polygon_folder = os.path.join(EXT_MEDIA, f'RB/derived_basins/{region}')
     else:
-        output_polygon_path = os.path.join(EXT_MEDIA, f'/derived_basins/{region}')
+        output_polygon_folder = os.path.join(EXT_MEDIA, f'/derived_basins/{region}')
 
-    if not os.path.exists(output_polygon_path):
-        os.makedirs(output_polygon_path)
-
-    gdf_fpath = os.path.join(output_polygon_path, f'{region}_basins_{method}_{n_sim}.geojson')
+    if not os.path.exists(output_polygon_folder):
+        os.makedirs(output_polygon_folder)
+    print(output_polygon_folder)
+    gdf_fpath = os.path.join(output_polygon_folder, f'{region}_basins_{method}_{n_sim}.geojson')
     print(gdf_fpath)
     all_gdfs.to_file(gdf_fpath, driver='GeoJSON')
     
