@@ -320,6 +320,8 @@ for region in sorted(region_codes):
         print(f'Generating {ppt_sample_size} pour points for a region of {region_area_km2:.1f} km^2.')
         
         output_path = os.path.join(DATA_DIR, f'pour_points/')
+        if not os.path.exists(output_path):
+            os.mkdir(output_path)
 
         existing_files = os.listdir(output_path)
 
@@ -350,8 +352,6 @@ for region in sorted(region_codes):
     if not os.path.exists(os.path.join(output_path, f'ppt_stats/')):
         os.makedirs(os.path.join(output_path, f'ppt_stats/'))
     tracking_df.to_csv(os.path.join(output_path, f'ppt_stats/{region}_ppt_stats.csv'))
-
-    print(asdfsad)
 
     
     
