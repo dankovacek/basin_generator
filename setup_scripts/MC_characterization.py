@@ -195,7 +195,7 @@ def create_temp_file_and_update_tracker(region, ppt_gdf, basin_tracker, temp_fil
     # divide the dataframe into chunks for batch processing
     # save the pour point dataframe to temporary files
     # and limit temporary raster files to 10GB / batch
-    batch_limit = 5E4
+    batch_limit = 1E5
     n_batches = int(filesize * sample_size / batch_limit) + 1
     # print(f' Running {n_batches} batch(es) on {filesize:.1f}MB raster.')
     batch_paths = []
