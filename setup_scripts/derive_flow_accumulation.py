@@ -4,14 +4,19 @@ import os
 import warnings
 warnings.filterwarnings('ignore')
 
+import numpy as np
 
 from whitebox.whitebox_tools import WhiteboxTools
 
 wbt = WhiteboxTools()
 wbt.verbose = False
 
+import rioxarray as rxr
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(BASE_DIR, 'processed_data/')
+
+DATA_DIR = '/media/danbot/Samsung_T5/geospatial_data/basin_generator/'
 
 processed_data_dir = os.path.join(DATA_DIR, 'processed_dem')
 
@@ -25,7 +30,15 @@ DEM_resolution = 90 # EENV DEM90 is approximately 90m resolution
 minimum_basin_size = 5 # km^2
 threshold = int(minimum_basin_size * 1E6 / (DEM_resolution**2))
 
-for region in sorted(region_codes):
+
+def retrieve_raster(fpath):
+    rds = rxr.open_rasterio(fpath, masked=True, mask_and_scale=True)
+    crs = rds.rio.crs
+    affine = rds.rio.transform(recalc=False)
+    return rds, crs, affine
+
+
+for region in ['07G']:#sorted(region_codes):
     print(f'processing flow direction and accumulation for {region}')
     dem_file = f'EENV_DEM/{region}_EENV_DEM_3005.tif'
     dem_path = os.path.join(processed_data_dir, dem_file)
@@ -35,6 +48,7 @@ for region in sorted(region_codes):
     out_stream_file = f'EENV_DEM/{region}_EENV_DEM_3005_stream.tif'
 
     accum_path = os.path.join(processed_data_dir, out_accum_file)
+    print(accum_path)
     if not os.path.exists(accum_path):
         wbt.flow_accumulation_full_workflow(
             dem_path, 
@@ -46,6 +60,11 @@ for region in sorted(region_codes):
             clip=False, 
             esri_pntr=False, 
         )
+
+    acc, _, _ = retrieve_raster(os.path.join(processed_data_dir, out_accum_file))
+    print(acc)
+    print(np.nanmax(acc))
+    print(asfsd)
 
     stream_path = os.path.join(processed_data_dir, out_stream_file)
     if not os.path.exists(stream_path):

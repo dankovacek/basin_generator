@@ -11,22 +11,19 @@ from shapely.geometry import Polygon, Point
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+DEM_source = 'EENV_DEM'
 
-DEM_DIR = os.path.join(BASE_DIR, 'source_data/dem_data')
+DATA_DIR = os.path.join(BASE_DIR, 'data/')
 
-EENV_DEM_DIR = os.path.join(DEM_DIR, 'EarthEnv_DEM90')
+# this is a custom path because I want my files saved to an external disk
+DATA_DIR = '/media/danbot/Samsung_T5/geospatial_data/basin_generator/data/'
 
-# EXT_DIR = '/media/danbot/Samsung_T5/geospatial_data/'
-# EENV_DEM_DIR = os.path.join(EXT_DIR, 'DEM_data/EarthEnv_DEM90')
+EENV_DEM_DIR = os.path.join(DATA_DIR, f'{DEM_source}/')
 
-vrt_out_path = os.path.join(BASE_DIR, 'processed_data/processed_dem')
+if not os.path.exists(EENV_DEM_DIR):
+    os.mkdir(EENV_DEM_DIR)
 
-# ensure the folders exist
-for p in [DEM_DIR, EENV_DEM_DIR, vrt_out_path]:
-    if not os.path.exists(p):
-        os.makedirs(p)
-
-HYSETS_DIR = os.path.join(BASE_DIR, 'source_data/HYSETS_data/')
+HYSETS_DIR = os.path.join(DATA_DIR, 'HYSETS_data/')
 
 hysets_df = pd.read_csv(os.path.join(HYSETS_DIR, 'HYSETS_watershed_properties.txt'), sep=';')
 hysets_locs = [Point(x, y) for x, y in zip(hysets_df['Centroid_Lon_deg_E'].values, hysets_df['Centroid_Lat_deg_N'])]
@@ -58,32 +55,8 @@ tiles_to_check = gpd.GeoDataFrame(geometry=tiles, crs='EPSG:4326')
 # https://maps.princeton.edu/catalog/stanford-ns372xw1938
 # na_bound_file = os.path.join(BASE_DIR, 'source_data/misc/stanford-ns372xw1938-geojson.json')
    
-
-# polygon_df = gpd.read_file(na_bound_file)
-
-# bounds_df = polygon_df[polygon_df['country'].isin(['CAN', 'MEX', 'USA'])]
-# state_excludes = ['US-HI']
-# bounds_df = bounds_df[~bounds_df['stateabb'].isin(state_excludes)]
-
-# # Exclude Puerto Rico because it is not in HYSETS
-# name_excludes = ['Puerto Rico', 'Navassa Island', 'United States Virgin Islands']
-# bounds_df = bounds_df[~bounds_df['name'].isin(name_excludes)]
-
-# # get the extents of the polygon describing Alaska
-# ak_bounds = bounds_df[bounds_df['stateabb'] == 'US-AK'].copy()
-# for i, row in ak_bounds.iterrows():
-#     _, _, max_y, _ = row['geometry'].bounds
-#     if max_y > 0:
-#         ak_bounds.loc[i, 'max_x'] = True
-#     else:
-#         ak_bounds.loc[i, 'max_x'] = False
-    
-
-# bounds_df = bounds_df.dissolve()
-
-bounds_fpath = os.path.join(BASE_DIR, 'source_data/misc/CANUSAMEX_bounds.geojson')
-
-# bounds_df.to_file(bounds_fpath)
+# bounds_fpath = os.path.join(DATA_DIR, 'misc/CANUSAMEX_bounds.geojson')
+bounds_fpath = os.path.join(DATA_DIR, 'misc/region_cvx_hull.geojson')
 
 bounds_df = gpd.read_file(bounds_fpath)
 
@@ -95,7 +68,7 @@ def custom_round(x, base=5):
 # created in the previous step
 overlapping_tiles_df = gpd.sjoin(tiles_to_check, bounds_df, predicate='intersects')
 
-overlapping_tiles_df = overlapping_tiles_df[['geometry', 'name', 'country', 'stateabb']]
+overlapping_tiles_df = overlapping_tiles_df[['geometry']]
 
 # get the coordinate pairs of the bounding boxes of all tiles.
 coord_pairs = []
@@ -114,10 +87,6 @@ coord_pairs = list(set(coord_pairs))
 
 formatted_coord_strings = [(f'N{p[1]:02d}W{abs(p[0]):03d}') for p in coord_pairs]
 
-# add the part of AK that goes past the Int'l Date Line
-east_coords = [(170, 50), (175, 50), (170, 55), (175, 55)]
-formatted_coord_strings += [(f'N{p[1]:02d}E{p[0]:03d}') for p in east_coords]
-
 # format filenames to compile the list of urls
 # remove any that already exist
 file_list = [f'EarthEnv-DEM90_{s}.tar.gz' for s in formatted_coord_strings]
@@ -134,22 +103,10 @@ def download_file(filename):
 
     if not os.path.exists(save_path):
         os.system(command)
-    
-        folder_name = filename.split('.')[0]
         os.system(f'tar -xf {EENV_DEM_DIR}/{filename} -C {EENV_DEM_DIR}')
 
 with Pool() as p:
     p.map(download_file, file_list)
-
-# for f in file_list:
-#     print(file_list)
-#     download_file(f)
-    
-# this command builds the dem mosaic "virtual raster"
-mosaic_file = 'EENV_DEM_mosaic_4326.vrt'
-vrt_command = f"gdalbuildvrt -resolution highest -a_srs epsg:4326 {vrt_out_path}/{mosaic_file} {EENV_DEM_DIR}/EarthEnv-DEM90_*.bil"
-
-os.system(vrt_command)
 
 
 # remove the downloaded tar files

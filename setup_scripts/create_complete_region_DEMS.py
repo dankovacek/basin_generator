@@ -15,24 +15,32 @@ from shapely.geometry import Polygon
 
 from shapely.validation import make_valid
 
+# specify the DEM source
+DEM_source = 'EENV_DEM'
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA_DIR = os.path.join(BASE_DIR, 'processed_data/')
 
-mask_dir = DATA_DIR + f'merged_basin_groups/'
+DATA_DIR = os.path.join(BASE_DIR, 'data/')
 
-# EXT_DIR = '/media/danbot/Samsung_T5/geospatial_data/'
+# this is a custom path because I want my files saved to an external disk
+DATA_DIR = '/media/danbot/Samsung_T5/geospatial_data/basin_generator/data/'
 
-# DEM_DIR = os.path.join(EXT_DIR, 'DEM_data/')
-DEM_DIR = os.path.join(BASE_DIR, 'source_data/dem_data/EarthEnv_DEM90/')
+mask_dir = os.path.join(BASE_DIR, f'processed_data/merged_basin_groups/')
 
-processed_data_dir = os.path.join(DATA_DIR, 'processed_dem')
+EENV_DEM_DIR = os.path.join(DATA_DIR, DEM_source)
+
+assert os.path.exists(EENV_DEM_DIR)
+
+# this command builds the dem mosaic "virtual raster"
+mosaic_path = os.path.join(DATA_DIR, f'{DEM_source}_mosaic_4326.vrt')
+
+vrt_command = f"gdalbuildvrt -resolution highest -a_srs EPSG:4326 {mosaic_path} {EENV_DEM_DIR}/EarthEnv-DEM90_*.bil"
+
+os.system(vrt_command)
+
+print(asfsd)
 
 t0 = time.time()
-
-# specify the DEM source
-# either 'EENV_DEM' or 'USGS_3DEP'
-DEM_source = 'EENV_DEM'
-# DEM_source = 'USGS_3DEP'
 
 epsg_code = 4326
 vrt_file = f'{DEM_source}_mosaic_4326.vrt'
@@ -40,13 +48,7 @@ if DEM_source == 'USGS_3DEP':
     epsg_code = 4269
     vrt_file = f'processed_dem/{DEM_source}_mosaic_{epsg_code}.vrt'
 
-dem_mosaic_file = os.path.join(processed_data_dir, vrt_file)
-
-save_path = DATA_DIR + f'processed_dem/{DEM_source}/'
-
-if not os.path.exists(save_path):
-    os.makedirs(save_path)
-
+dem_mosaic_file = os.path.join(EENV_DEM_DIR, vrt_file)
 
 def get_crs_and_resolution(fname):
     raster = rxr.open_rasterio(fname)
@@ -124,8 +126,8 @@ for code in all_codes:
     
 
     # set the output initial path and reprojected path
-    out_path = f'{save_path}{grp_code}_{DEM_source}_{epsg_code}.tif'
-    out_path_reprojected = f'{save_path}{grp_code}_{DEM_source}_3005.tif'
+    out_path = f'{EENV_DEM_DIR}{grp_code}_{DEM_source}_{epsg_code}.tif'
+    out_path_reprojected = f'{EENV_DEM_DIR}{grp_code}_{DEM_source}_3005.tif'
 
     # if you want to modify the resulting DEM resolution,
     # you'll need to replace 1 with some other factor here
@@ -138,7 +140,7 @@ for code in all_codes:
         if rfactor == 1:
             command = f'gdalwarp -s_srs epsg:{epsg_code} -cutline {fpath} -cl {named_layer} -crop_to_cutline -multi -of gtiff {dem_mosaic_file} {out_path} -wo NUM_THREADS=ALL_CPUS'
         else:
-            command = f'gdalwarp -s_srs epsg:4326 -cutline {fpath} -cl {named_layer} -crop_to_cutline -tr {trw} {trh} -multi -of gtiff {dem_mosaic_file} {out_path} -wo CUTLINE_ALL_TOUCHED=TRUE -wo NUM_THREADS=ALL_CPUS'
+            command = f'gdalwarp -s_srs epsg:4326 -cutline {fpath} -cl {named_layer} -ot Float32 -crop_to_cutline -tr {trw} {trh} -multi -of gtiff {dem_mosaic_file} {out_path} -wo CUTLINE_ALL_TOUCHED=TRUE -wo NUM_THREADS=ALL_CPUS'
         print('')
         print('__________________')
         print(command)
